@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>スポット検索＆ルート案内</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body { font-family: sans-serif; margin: 0; }
+    #map { height: 85vh; }
+    #controls {
+      padding: 10px;
+      background: #f0f0f0;
+    }
+    select, button, input {
+      padding: 5px;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <label>カテゴリ:
+      <select id="categoryFilter">
+        <option value="">すべて</option>
+        <option value="君の名は。">君の名は。</option>
+        <option value="氷菓">氷菓</option>
+        <option value="聲の形">聲の形</option>
+        <option value="メダリスト">メダリスト</option>
+        <option value="凪のあすから">凪のあすから</option>
+        <option value="僕は友達が少ない">僕は友達が少ない</option>
+        <option value="名探偵コナン">名探偵コナン</option>
+        <option value="物語シリーズ">物語シリーズ</option>
+        <option value="五等分の花嫁">五等分の花嫁</option>
+        <option value="ゆるキャン△">ゆるキャン△</option>
+        <option value="泣きたい私は猫をかぶる">泣きたい私は猫をかぶる</option>
+        <option value="負けヒロインが多すぎる">負けヒロインが多すぎる</option>
+        <option value="電波女と青春男">電波女と青春男</option>
+        <option value="ラブライブ！サンシャイン‼">ラブライブ！サンシャイン‼</option>
+        <option value="終わりのセラフ">終わりのセラフ</option>
+        <option value="恋愛ラボ">恋愛ラボ</option>
+        <option value="風立ちぬ">風立ちぬ</option>
+        <option value="咲ーSakiー">咲ーSakiー</option>
+        <option value="のうりん">のうりん</option>
+        <option value="ヒカルの碁">ヒカルの碁</option>
+        <option value="ひぐらしのなく頃に">ひぐらしのなく頃に</option>
+        <option value="星空へかかる橋">星空へかかる橋</option>
+        <option value="らき☆すた">らき☆すた</option>
+        <option value="うさぎドロップ">うさぎドロップ</option>
+        <option value="ウマ娘 シンデレラグレイ">ウマ娘 シンデレラグレイ</option>
+        <option value="ギルティクラウン">ギルティクラウン</option>
+        <option value="ゴールデンカムイ">ゴールデンカムイ</option>
+        <option value="シキザクラ">シキザクラ</option>
+        <option value="ルドルフとイッパイアッテナ">ルドルフとイッパイアッテナ</option>
+        <option value="安達としまむら">安達としまむら</option>
+        <option value="鬼滅の刃">鬼滅の刃</option>
+        <option value="呪術廻戦">呪術廻戦</option>
+        <option value="信長協奏曲">信長協奏曲</option>
+        <option value="徒然日和">徒然日和</option>
+        <option value="八十亀ちゃんかんさつにっき">八十亀ちゃんかんさつにっき</option>
+        <option value="半分の月がのぼる空">半分の月がのぼる空</option>
+        <option value="僕らはみんな河合荘">僕らはみんな河合荘</option>
+        <option value="恋愛ラボ">恋愛ラボ</option>
+        <option value="さくら荘のペットな彼女">さくら荘のペットな彼女</option>
+        <option value="安達としまむら">安達としまむら</option>        
+        <option value="シキザクラ">シキザクラ</option>
+        <option value="のうりん">のうりん</option>
+        
+
+
+        
+
+
+      </select>
+    </label>
+    <label>県名:
+      <select id="prefectureFilter">
+        <option value="">すべて</option>
+        <option value="愛知県">愛知県</option>
+        <option value="岐阜県">岐阜県</option>
+        <option value="三重県">三重県</option>
+      </select>
+    </label>
+    <label>距離制限:
+      <select id="distanceLimit">
+        <option value="none">制限なし</option>
+        <option value="limit">制限あり</option>
+      </select>
+    </label>
+    <label>現在地からの距離 (km):
+      <input type="number" id="distanceFilter" value="3" min="1" max="50" step="1" disabled />
+    </label>
+    <select id="destination">
+      <option disabled selected>目的地を選択</option>
+    </select>
+    <button onclick="getRoute()">ルート検索</button>
+  </div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const destinations = [
+      { name: "「君の名は。」 気多若宮神社", lat: 36.239437, lng: 137.197881 ,category: "君の名は。", prefecture: "岐阜県"},
+      { name: "「君の名は。」 飛騨市図書館", lat: 36.238024, lng: 137.185309 ,category: "君の名は。", prefecture: "岐阜県"},
+      { name: "「君の名は。」 落合バス停", lat: 36.302297537115315,  lng: 137.11009418156635 ,category: "君の名は。", prefecture: "岐阜県"},
+      { name: "「君の名は。」 名古屋駅", lat:35.17089325714845, lng:  136.88146805573254 ,category: "君の名は。", prefecture: "愛知県"},
+      { name: "「君の名は。」 飛騨古川駅", lat: 36.23673022684053,lng: 137.18962962208883  ,category: "君の名は。", prefecture: "岐阜県"},
+      { name: "「君の名は。」 飛騨山王宮日枝神社", lat:36.13317456855519,  lng: 137.2613827341292,category: "君の名は。", prefecture: "愛知県"},
+      { name: "「氷菓」 喫茶去かつて", lat: 36.141715059490906,  lng: 137.25954296079325 ,category: "氷菓", prefecture: "岐阜県"},
+      { name: "「聲の形」 養老の滝", lat: 35.28038826384124,  lng: 136.53426436031046 ,category: "聲の形", prefecture: "岐阜県"},
+      { name: "「メダリスト」 スケートリンク 名古屋スポーツセンター", lat: 35.15751839644696,  lng: 136.89911774761765  ,category: "メダリスト", prefecture: "愛知県"},
+      { name: "「メダリスト」 セブンイレブン名古屋枇杷島1丁目店付近", lat: 35.190397161372026, lng:  136.87332779044644  ,category: "メダリスト", prefecture: "愛知県"},
+      { name: "「イにシャルD」鈴鹿サーキット", lat: 34.844667782460725,   lng: 136.5379102653156 ,category: "イニシャルD", prefecture: "三重県"},
+      { name: "「うさぎドロップ」裏門前公園", lat: 35.1613421406286,  lng:  136.90413738284477,category: "うさぎドロップ", prefecture: "愛知県"},
+      { name: "「うさぎドロップ」大須商店街", lat: 35.15923265699203,  lng:  136.90265883082154,category: "うさぎドロップ", prefecture: "愛知県"},
+      { name: "「うさぎドロップ」大須公園", lat: 35.15961665138728,  lng: 136.9026236026477 ,category: "うさぎドロップ", prefecture: "愛知県"},
+      { name: "「うさぎドロップ」大須小学校", lat:35.15990519883704 ,  lng: 136.89617233495386 ,category: "うさぎドロップ", prefecture: "愛知県"},
+      { name: "「うさぎドロップ」富士浅間神社", lat:35.159281463695876 ,  lng: 136.9009024368314 ,category: "うさぎドロップ", prefecture: "愛知県"},
+      { name: "「ウマ娘 シンデレラグレイ」笠松駅周辺", lat:35.374177650825494 ,  lng:  136.76426513867287 ,category: "ウマ娘 シンデレラグレイ", prefecture: "愛知県"},
+      { name: "「ウマ娘 シンデレラグレイ」笠松競馬場", lat:35.37239560801755 ,  lng: 136.7655731656545 ,category: "ウマ娘 シンデレラグレイ", prefecture: "愛知県"},
+      { name: "「ウマ娘 シンデレラグレイ」笠松湊公園", lat: 35.366004350364705,  lng: 136.76343396750863 ,category: "ウマ娘 シンデレラグレイ", prefecture: "愛知県"},
+      { name: "「ゴールデンカムイ」博物館明治村", lat: 35.34067799901118,  lng: 136.9884831420366 ,category: "ゴールデンカムイ", prefecture: "愛知県"},
+      { name: "「ゴールデンカムイ」博物館明治村 金沢監獄正門", lat: 35.34597635476752,  lng: 136.9893367059028 ,category: "ゴールデンカムイ", prefecture: "愛知県"},
+      { name: "「ゴールデンカムイ」博物館明治村 金沢監獄中央看守所", lat: 35.34653943983872,  lng: 136.98899784663757 ,category: "ゴールデンカムイ", prefecture: "愛知県"},
+      { name: "「ゴールデンカムイ」博物館明治村 呉服座", lat:35.345091153478215 ,  lng: 136.98962760326282 ,category: "ゴールデンカムイ", prefecture: "愛知県"},
+      { name: "「ゴールデンカムイ」博物館明治村 高田小熊写真館", lat:35.34646676560252 ,  lng: 136.98828370214093 ,category: "ゴールデンカムイ", prefecture: "愛知県"},
+      { name: "「ゴールデンカムイ」博物館明治村 名古屋衛生病院", lat:35.34345477507004 ,  lng:  136.99130038187423,category: "ゴールデンカムイ", prefecture: "愛知県"},
+      { name: "「ゴールデンカムイ」博物館明治村 日本赤十字中央病院棟", lat:35.343164743369755 ,  lng: 136.99088198970222 ,category: "ゴールデンカムイ", prefecture: "愛知県"},
+      { name: "「ゴールデンカムイ」博物館明治村 東山梨郡役所", lat:35.34156578343814 ,  lng: 136.98863929585022 ,category: "ゴールデンカムイ", prefecture: "愛知県"},
+      { name: "「ゴールデンカムイ」博物館明治村 歩兵第六連隊兵舎", lat: 35.34344173552259,  lng: 136.99090874139313 ,category: "ゴールデンカムイ", prefecture: "愛知県"},
+      { name: "「ゴールデンカムイ」博物館明治村 本郷喜之床", lat:35.34491125530775 ,  lng: 136.98974947208401 ,category: "ゴールデンカムイ", prefecture: "愛知県"},
+      { name: "「ゴールデンカムイ」博物館明治村 前橋監獄雑居房", lat: 35.34622443205583,  lng:  136.9889884058114 ,category: "ゴールデンカムイ", prefecture: "愛知県"},
+      { name: "「ゴールデンカムイ」博物館明治村 宮津裁判所法廷所", lat: 35.34668798788918,  lng: 136.98863069476596 ,category: "ゴールデンカムイ", prefecture: "愛知県"},
+      { name: "「ゴールデンカムイ」博物館明治村西郷從道邸", lat: 35.34020205809593,  lng: 136.9903291270348 ,category: "ゴールデンカムイ", prefecture: "愛知県"},
+      { name: "「ギルティクラウン」協会", lat: 35.34257701152345,  lng: 137.1350826654979 ,category: "ギルティクラウン", prefecture: "岐阜県"},
+      { name: "「名探偵コナン」オアシス21のモニュメント", lat:35.173612483376814 ,  lng: 136.9094492234594 ,category: "名探偵コナン", prefecture: "愛知県"},
+      { name: "「名探偵コナン」イオンモール熱田", lat: 35.13645483312017,  lng: 136.90950779633468 ,category: "名探偵コナン", prefecture: "愛知県"},
+      { name: "「名探偵コナン」太田川駅", lat: 35.0206907585318,  lng:  136.89293395585642,category: "名探偵コナン", prefecture: "愛知県"},
+      { name: "「名探偵コナン」緋色の弾丸より 金シャチ横丁宗春ゾーン", lat: 35.18340228021131,  lng: 136.90471896168216 ,category: "名探偵コナン", prefecture: "愛知県"},
+      { name: "「名探偵コナン」天空の難破船より 佐久島", lat: 34.723197481969244,  lng: 137.03704953741013 ,category: "名探偵コナン", prefecture: "愛知県"},
+      { name: "「名探偵コナン」瞳の中の暗殺者より 志摩スペイン村", lat: 34.36233212469185,  lng: 136.84445022513563 ,category: "名探偵コナン", prefecture: "三重県"},
+      { name: "「名探偵コナン」緋色の弾丸より スパイラルタワーズ", lat: 35.16834958151556,  lng: 136.88549296749972 ,category: "名探偵コナン", prefecture: "愛知県"},
+      { name: "「名探偵コナン」中部国際空港", lat:34.85737742735943,  lng:  136.81074126457492 ,category: "名探偵コナン", prefecture: "愛知県"},
+      { name: "「名探偵コナン」中部電力MIRAI TOWER", lat: 35.172331082438355,  lng: 136.90832845806685 ,category: "名探偵コナン", prefecture: "愛知県"},
+      { name: "「名探偵コナン」11人目のストライカーより 豊田スタジアム", lat:35.08456844864106,  lng: 137.17084752024005 ,category: "名探偵コナン", prefecture: "愛知県"},
+      { name: "「名探偵コナン」緋色の弾丸より 名港トリトン", lat:35.096775722489866,  lng:136.87956727492866 ,category: "名探偵コナン", prefecture: "愛知県"},
+      { name: "「名探偵コナン」名古屋港水族館", lat:35.09049779566434,   lng:136.87843018922337 ,category: "名探偵コナン", prefecture: "愛知県"},
+      { name: "「名探偵コナン」久屋大通公園", lat: 35.17097317463925,  lng: 136.9084296490756 ,category: "名探偵コナン", prefecture: "愛知県"},
+      { name: "「名探偵コナン」まるや本店中部国際空港店", lat: 34.858433486945984,   lng: 136.81413718789045 ,category: "名探偵コナン", prefecture: "愛知県"},
+      { name: "「名探偵コナン」名城公園", lat: 35.18873118446637,   lng: 136.9029778687241,category: "名探偵コナン", prefecture: "愛知県"},
+      { name: "「のうりん」加茂農林高校", lat: 35.44932128997247,   lng: 137.03088313558223,category: "のうりん", prefecture: "岐阜県"},
+      { name: "「のうりん」田島町3丁目交差点・国道248号線沿", lat: 35.448599144636454,  lng: 137.02760372556125 ,category: "のうりん", prefecture: "岐阜県"},
+      { name: "「のうりん」古井の天狗山", lat: 35.46120986612075,  lng: 137.05217313648396 ,category: "のうりん", prefecture: "岐阜県"},
+      { name: "「ヒカルの碁」下呂温泉 水明館", lat: 35.80580145056766, lng:  137.2410153 ,category: "ヒカルの碁", prefecture: "岐阜県"},
+      { name: "「ひぐらしのなく頃に」白川郷和田家", lat: 36.259857418853436,  lng: 136.90762963558223  ,category: "ひぐらしのなく頃に", prefecture: "岐阜県"},
+      { name: "「ひぐらしのなく頃に」白川八幡神社", lat: 36.254733960690125,   lng: 136.90582492208887 ,category: "ひぐらしのなく頃に", prefecture: "岐阜県"},
+      { name: "「ひぐらしのなく頃に」出会い橋", lat: 36.25650348277688,  lng: 136.90379046078854  ,category: "ひぐらしのなく頃に", prefecture: "岐阜県"},
+      { name: "「ゆるキャン△」向野橋", lat:35.15911989840581 ,  lng:136.8761792478205 ,category: "ゆるキャン△", prefecture: "愛知県"},
+      { name: "「ゆるキャン△」コーヒーハウスかこ", lat: 35.17016069056758,  lng: 136.89032752582028  ,category: "ゆるキャン△", prefecture: "愛知県"},
+      { name: "「ラブライブ！サンシャイン‼」名古屋駅桜通口 金時計周辺", lat:35.17084929907895, lng:  136.88293422827155  ,category: "ラブライブ！サンシャイン‼", prefecture: "愛知県"},
+      { name: "「ラブライブ！サンシャイン‼」日本ガイシホール", lat:35.09582378496306,  lng: 136.92336379325332  ,category: "ラブライブ！サンシャイン‼", prefecture: "愛知県"},
+      { name: "「ラブライブ！サンシャイン‼」久屋大通公園", lat: 35.17097317463925,  lng: 136.9084296490756  ,category: "ラブライブ！サンシャイン‼", prefecture: "愛知県"},
+      { name: "「安達としまむら」モレラ岐阜", lat: 35.45489644569207,  lng: 136.67279806936736,category: "安達としまむら", prefecture: "岐阜県"},
+      { name: "「鬼滅の刃」鬼岩公園", lat:35.41274302870445 ,  lng: 137.19890162332928 ,category: "鬼滅の刃", prefecture: "岐阜県"},
+      { name: "「鬼滅の刃」鬼の大石", lat: 35.581014518000366,  lng: 137.0337435724733 ,category: "鬼滅の刃", prefecture: "岐阜県"},
+      { name: "「鬼滅の刃」鬼の一刀岩", lat:35.41893143925721 ,  lng: 137.19866775865674 ,category: "鬼滅の刃", prefecture: "岐阜県"},
+      { name: "「鬼滅の刃」名古屋能楽堂", lat:35.18237250659523 ,  lng: 136.8970140423729 ,category: "鬼滅の刃", prefecture: "愛知県"},
+      { name: "「五等分の花嫁」太田川駅", lat: 35.02045449389177,   lng:136.89283655125857,category: "五等分の花嫁", prefecture: "愛知県"},
+      { name: "「五等分の花嫁」名古屋港水族館", lat:35.090477055794345,   lng: 136.87842600127584,category: "五等分の花嫁", prefecture: "愛知県"},
+      { name: "「五等分の花嫁」西知多総合病院", lat:34.999136705679845,   lng: 136.89915735092438 ,category: "五等分の花嫁", prefecture: "愛知県"},
+      { name: "「五等分の花嫁」日本福祉大学東海キャンパス", lat:35.021587620658174,  lng: 136.88868467791113 ,category: "五等分の花嫁", prefecture: "愛知県"},
+      { name: "「咲ーSakiー」馬籠宿", lat:35.52561658369262,  lng: 137.56597872222244 ,category: "咲ーSakiー", prefecture: "岐阜県"},
+      { name: "「咲ーSakiー」中津川温泉クアリゾート湯舟沢", lat: 35.50931896405132,   lng:137.57508746489813  ,category: "咲ーSakiー", prefecture: "岐阜県"},
+      { name: "「終わりのセラフ」名古屋決戦編より 名古屋市役所", lat: 35.18142767604518,   lng:  136.90657783061746,category: "終わりのセラフ", prefecture: "愛知県"},
+      { name: "「終わりのセラフ」名古屋決戦編より 久屋大通公園", lat: 35.17097317463925,  lng: 136.9084296490756 ,category: "終わりのセラフ", prefecture: "愛知県"},
+      { name: "「星空へかかる橋」パグパイプ", lat: 36.14110840618481,   lng: 137.2590674081531 ,category: "星空へかかる橋", prefecture: "岐阜県"},
+      { name: "「星空へかかる橋」飛騨一ノ宮駅", lat:36.08802074905763,lng:  137.2472123157127  ,category: "星空へかかる橋", prefecture: "岐阜県"},
+      { name: "「電波女と青春男」久屋大通公園", lat: 35.17097317463925,  lng: 136.9084296490756 ,category: "電波女と青春男", prefecture: "愛知県"},
+      { name: "「凪のあすから」大泊駅", lat:33.902205738505174,  lng:  136.11810427200413 ,category: "凪のあすから", prefecture: "三重県"},
+      { name: "「凪のあすから」大泊海水浴場", lat:33.899376587066634,    lng: 136.11812314701118 ,category: "凪のあすから", prefecture: "三重県"},
+      { name: "「凪のあすから」鬼ヶ城", lat:33.8904787089086,  lng:136.11646268029037   ,category: "凪のあすから", prefecture: "三重県"},
+      { name: "「凪のあすから」旧新鹿中学校", lat:33.92282657160494, lng:  136.14798212224778 ,category: "凪のあすから", prefecture: "三重県"},
+      { name: "「凪のあすから」旧造船所", lat: 34.11335352247378,  lng:136.25276470653694 ,category: "凪のあすから", prefecture: "三重県"},
+      { name: "「凪のあすから」旧造船所前踏切", lat: 34.200416264568034,  lng: 136.32785753256968 ,category: "凪のあすから", prefecture: "三重県"},
+      { name: "「凪のあすから」旧波田須小学校", lat: 33.91375638582697,  lng: 136.13662882820338 ,category: "凪のあすから", prefecture: "三重県"},
+      { name: "「凪のあすから」清七屋ストアー", lat: 33.929030993574095,  lng:  136.14575448141696 ,category: "凪のあすから", prefecture: "三重県"},
+      { name: "「凪のあすから」熊野市駅", lat: 33.889605866354415, lng: 136.09883938938185 ,category: "凪のあすから", prefecture: "三重県"},
+      { name: "「凪のあすから」新長島造船場", lat: 34.99907895106982,   lng: 136.65597190612235 ,category: "凪のあすから", prefecture: "三重県"},
+      { name: "「凪のあすから」天女座入口", lat: 33.91239862170457, lng:   136.13752726125537 ,category: "凪のあすから", prefecture: "三重県"},
+      { name: "「凪のあすから」波田須駅", lat:33.91028188045313, lng:  136.13838538487667 ,category: "凪のあすから", prefecture: "三重県"},
+      { name: "「八十亀ちゃんかんさつにっき」唐揚げ店 彩音（閉業済み）", lat: 35.1594162996665,  lng:  136.90060068657448 ,category: "八十亀ちゃんかんさつにっき", prefecture: "愛知県"},
+      { name: "「八十亀ちゃんかんさつにっき」第一アメ横ビル", lat:35.159906571087156 ,  lng:136.90510736379034  ,category: "八十亀ちゃんかんさつにっき", prefecture: "愛知県"},
+      { name: "「八十亀ちゃんかんさつにっき」モニュメント 飛翔(撤去済み)", lat: 35.17215542608319,  lng:  136.88400542379586 ,category: "八十亀ちゃんかんさつにっき", prefecture: "愛知県"},
+      { name: "「半分の月がのぼる空」小田橋", lat:34.48608850817106 ,  lng:  136.71510729435968 ,category: "半分の月がのぼる空", prefecture: "三重県"},
+      { name: "「半分の月がのぼる空」虎尾山", lat: 34.48359470833177, lng:136.71600946984583 ,category: "半分の月がのぼる空", prefecture: "三重県"},
+      { name: "「半分の月がのぼる空」二見興玉神社", lat: 34.50892364968733, lng:  136.78782779595375  ,category: "半分の月がのぼる空", prefecture: "三重県"},
+      { name: "「半分の月がのぼる空」三重県立宇治山田高校", lat: 34.487949248170565,  lng:136.69415998466866  ,category: "半分の月がのぼる空", prefecture: "三重県"},
+      { name: "「半分の月がのぼる空」ミキモト真珠島", lat: 34.483365298291034,  lng: 136.84678855212314 ,category: "半分の月がのぼる空", prefecture: "三重県"},
+     { name: "「氷菓」奥飛騨温泉郷", lat:36.24772278558241,  lng: 137.5144628010458  ,category: "氷菓", prefecture: "岐阜県"},
+      { name: "「氷菓」鍛冶橋", lat:36.14301886457267,  lng: 137.25756869638138  ,category: "氷菓", prefecture: "岐阜県"},
+      { name: "「氷菓」スカイパーク", lat: 36.146586246691584,  lng:  137.2395786698321 ,category: "氷菓", prefecture: "岐阜県"},
+      { name: "「氷菓」古い町並み", lat:36.143154629832566, lng:  137.25907427932833 ,category: "氷菓", prefecture: "岐阜県"},
+      { name: "「氷菓」飛騨一宮水無神社", lat:36.08545901726657,   lng: 137.25180186754235 ,category: "氷菓", prefecture: "岐阜県"},
+      { name: "「氷菓」まるっとプラザ", lat: 36.14239233655386,  lng:137.25769368103593,category: "氷菓", prefecture: "岐阜県"},
+      { name: "「氷菓」宮川朝市", lat: 36.14472492745506,  lng: 137.25792900801787 ,category: "氷菓", prefecture: "岐阜県"},
+      { name: "「氷菓」弥生橋", lat: 36.146250972440775,  lng:137.25743416754523  ,category: "氷菓", prefecture: "岐阜県"},
+      { name: "「氷菓」煥賞館", lat: 36.143236176281135, lng:  137.26203974849076 ,category: "氷菓", prefecture: "岐阜県"},
+      { name: "「シキザクラ」熱田神宮", lat: 35.12776500157432,   lng: 136.90841903570887 ,category: "シキザクラ", prefecture: "愛知県"},
+      { name: "「シキザクラ」犬山駅", lat: 35.38059731323793,   lng: 136.94567929145734 ,category: "シキザクラ", prefecture: "愛知県"},
+      { name: "「シキザクラ」犬山城", lat: 35.389225991224855, lng:  136.93649363916643 ,category: "シキザクラ", prefecture: "愛知県"},
+      { name: "「シキザクラ」大須観音", lat: 35.16026860499404,  lng:136.89983326064777 ,category: "シキザクラ", prefecture: "愛知県"},
+      { name: "「シキザクラ」大須商店街", lat: 35.1606448420087,  lng: 136.90276190233686  ,category: "シキザクラ", prefecture: "愛知県"},
+      { name: "「シキザクラ」名古屋城", lat: 35.184979548514484,  lng:136.8995649183877  ,category: "シキザクラ", prefecture: "愛知県"},
+      { name: "「シキザクラ」名古屋テレビ塔", lat: 35.17274460341759,  lng:  136.90853042683023 ,category: "シキザクラ", prefecture: "愛知県"},
+      { name: "「シキザクラ」東山動植物園", lat: 35.15681366811172,  lng: 136.98207535973015,category: "シキザクラ", prefecture: "愛知県"},
+      { name: "「シキザクラ」名鉄犬山線", lat: 35.380544604718175, lng:  136.94566896329292 ,category: "シキザクラ", prefecture: "愛知県"},
+      { name: "「のうりん」JAめぐみのかも本部", lat: 35.45357777316524, lng:  137.00593150972173  ,category: "のうりん", prefecture: "愛知県"},
+      { name: "「のうりん」化石林公園", lat: 35.43899811960391,  lng: 137.03161776524382,category: "のうりん", prefecture: "愛知県"},
+      { name: "「のうりん」加茂農林高校", lat: 35.543121781794774,  lng: 137.01976782786247 ,category: "のうりん", prefecture: "愛知県"},
+      { name: "「のうりん」田島町3丁目交差点・国道248号線沿", lat: 35.44855684082915, lng:  137.0275882961063 ,category: "のうりん", prefecture: "愛知県"},
+      { name: "「のうりん」日本昭和村（ぎふ清流里山公園）", lat: 35.47539243989412, lng:   137.03355964061572,category: "のうりん", prefecture: "愛知県"},
+      { name: "「のうりん」古井近隣公園周辺", lat: 35.44659465026718,  lng: 137.03105619191095 ,category: "のうりん", prefecture: "愛知県"},
+      { name: "「のうりん」古井の天狗山", lat: 35.46120986612075,  lng: 137.05217313648396 ,category: "のうりん", prefecture: "愛知県"},
+      { name: "「のうりん」美濃太田駅", lat: 35.44584237129477, lng:   137.01944503854253,category: "のうりん", prefecture: "愛知県"},
+      { name: "「のうりん」みのかも健康の森", lat: 35.50147540663667,  lng: 137.0276345782268 ,category: "のうりん", prefecture: "愛知県"},
+      { name: "「負けヒロインが多すぎる」NTT西日本 豊橋ビル", lat: 34.76669857289629,  lng: 137.3907402963176  ,category: "負けヒロインが多すぎる", prefecture: "愛知県"},
+      { name: "「負けヒロインが多すぎる」愛知県立時習館高等学校", lat: 34.738694084657745,  lng:137.38415777835215 ,category: "負けヒロインが多すぎる", prefecture: "愛知県"},
+      { name: "「負けヒロインが多すぎる」駅ビルカフェUNO-UNO", lat: 34.763555750446116,  lng: 137.38290932700843 ,category: "負けヒロインが多すぎる", prefecture: "愛知県"},
+      { name: "「負けヒロインが多すぎる」ガスト豊橋橋良店", lat: 34.748017157376616,   lng: 137.38087226748038 ,category: "負けヒロインが多すぎる", prefecture: "愛知県"},
+      { name: "「負けヒロインが多すぎる」精文館書店豊橋店", lat:34.764807267515366, lng:  137.38362934228294  ,category: "負けヒロインが多すぎる", prefecture: "愛知県"},
+      { name: "「負けヒロインが多すぎる」豊鉄市内線", lat: 34.76249128262106,  lng: 137.387200181316 ,category: "負けヒロインが多すぎる", prefecture: "愛知県"},
+      { name: "「負けヒロインが多すぎる」豊橋まちなか図書館", lat:34.76243175968744 ,  lng:  137.38380617617491 ,category: "負けヒロインが多すぎる", prefecture: "愛知県"},
+      { name: "「負けヒロインが多すぎる」豊橋駅前のスペースシャトル", lat:34.76354038016247,  lng: 137.3839281418248 ,category: "負けヒロインが多すぎる", prefecture: "愛知県"},
+      { name: "「負けヒロインが多すぎる」ボン.千賀", lat: 34.763629808655466,  lng: 137.3850523521358 ,category: "負けヒロインが多すぎる", prefecture: "愛知県"},
+      { name: "「負けヒロインが多すぎる」丸もち鈴木米殻店", lat: 34.768343215540526,  lng:137.39826993867158  ,category: "負けヒロインが多すぎる", prefecture: "愛知県"},
+      { name: "「負けヒロインが多すぎる」豊城中学校", lat:34.7707223662937,  lng: 137.39149781015138 ,category: "負けヒロインが多すぎる", prefecture: "愛知県"},
+      { name: "「負けヒロインが多すぎる」吉田神社", lat:34.77030002436582,  lng: 137.38992985319118 ,category: "負けヒロインが多すぎる", prefecture: "愛知県"},
+      { name: "「負けヒロインが多すぎる」吉田中安全秋葉山", lat:34.76623473101629,  lng: 137.40014552549155 ,category: "負けヒロインが多すぎる", prefecture: "愛知県"},
+      { name: "「負けヒロインが多すぎる」吉田大橋", lat:34.77206678692289,   lng: 137.39030633368392 ,category: "負けヒロインが多すぎる", prefecture: "愛知県"},
+      { name: "「負けヒロインが多すぎる」ロイヤルマンション豊橋公園", lat: 34.766688819906115,  lng:  137.39580975432642 ,category: "負けヒロインが多すぎる", prefecture: "愛知県"},
+      { name: "「風立ちぬ」三菱重工業名古屋発動機製作所跡", lat:35.18616523599558, lng: 136.94735696416438  ,category: "風立ちぬ", prefecture: "愛知県"},
+      { name: "「物語シリーズ」大須商店街", lat: 35.15919754398992,   lng: 136.90261591200945,category: "物語シリーズ", prefecture: "愛知県"},
+      { name: "「物語シリーズ」名古屋国際会議場", lat: 35.131978241561946, lng:  136.8982676843936 ,category: "物語シリーズ", prefecture: "愛知県"},
+      { name: "「物語シリーズ」赤門通交差点信号機", lat: 35.1604460315032,  lng: 136.9036373126694 ,category: "物語シリーズ", prefecture: "愛知県"},
+      { name: "「僕は友達が少ない」犬山橋", lat: 35.39319787948844, lng:  136.9453552236665  ,category: "僕は友達が少ない", prefecture: "愛知県"},
+      { name: "「僕は友達が少ない」愛知県立時習館高等学校", lat:34.73901542309807, lng: 137.3839986536206 ,category: "僕は友達が少ない", prefecture: "愛知県"},
+      { name: "「僕は友達が少ない」長島スパーランド", lat:35.02783246867617,  lng: 136.7272992948194  ,category: "僕は友達が少ない", prefecture: "三重県"},
+      { name: "「僕は友達が少ない」長良公園", lat:35.446940018595754, lng:  136.7834959813384 ,category: "僕は友達が少ない", prefecture: "岐阜県"},
+      { name: "「僕は友達が少ない」穂積駅", lat: 35.396545837986785,  lng: 136.6937186948947 ,category: "僕は友達が少ない", prefecture: "岐阜県"},
+      { name: "「僕は友達が少ない」西岐阜駅", lat: 35.404833379986606,   lng:  136.72344379667734,category: "僕は友達が少ない", prefecture: "岐阜県"},
+      { name: "「僕らはみんな河合荘」鵜飼観覧船乗り場", lat:35.43798812482931,  lng: 136.7729941787717 ,category: "僕らはみんな河合荘", prefecture: "岐阜県"},
+      { name: "「僕らはみんな河合荘」河原町", lat:35.43684363205962 ,  lng:  136.77117261468058 ,category: "僕らはみんな河合荘", prefecture: "岐阜県"},
+      { name: "「僕らはみんな河合荘」金華山", lat:35.43511388641267,  lng:  136.78126064810044,category: "僕らはみんな河合荘", prefecture: "岐阜県"},
+      { name: "「僕らはみんな河合荘」長良川温泉", lat:35.442000478592746,  lng: 136.77378356586493  ,category: "僕らはみんな河合荘", prefecture: "岐阜県"},
+      { name: "「僕らはみんな河合荘」長良橋", lat: 35.43962284187559,  lng: 136.77343655072966  ,category: "僕らはみんな河合荘", prefecture: "岐阜県"},
+      { name: "「僕らはみんな河合荘」三省堂書店 長良店", lat: 35.454053260060704,  lng: 136.7680803490307 ,category: "僕らはみんな河合荘", prefecture: "岐阜県"},
+      { name: "「僕らはみんな河合荘」桂翆館", lat: 35.43005854495027,  lng: 136.76631866624845,category: "僕らはみんな河合荘", prefecture: "岐阜県"},
+      { name: "「僕らはみんな河合荘」長良橋北交差点", lat:35.441635318236365 ,  lng:136.77354643369787  ,category: "僕らはみんな河合荘", prefecture: "岐阜県"},
+      { name: "「僕らはみんな河合荘」長良橋バス停付近", lat: 35.14835553274256,  lng:  136.8752792919975 ,category: "僕らはみんな河合荘", prefecture: "岐阜県"},
+      { name: "「僕らはみんな河合荘」長良広場の階段", lat: 35.44128212910799, lng:  136.7738406582319  ,category: "僕らはみんな河合荘", prefecture: "岐阜県"},
+      { name: "「僕らはみんな河合荘」美登里橋", lat: 35.43553942836347,  lng:  136.76950061824274 ,category: "僕らはみんな河合荘", prefecture: "岐阜県"},
+      { name: "「僕らはみんな河合荘」ロボット水門", lat:35.43720619205986,  lng: 136.7740526603065 ,category: "僕らはみんな河合荘", prefecture: "岐阜県"},
+      { name: "「恋愛ラボ」駅前の織田信長像", lat:35.366708172232556,   lng: 136.61385292731865 ,category: "恋愛ラボ", prefecture: "岐阜県"},
+      { name: "「恋愛ラボ」大垣市（大里市のモデル）", lat: 35.358572619021885,  lng:136.61362016463022 ,category: "恋愛ラボ", prefecture: "岐阜県"},
+      { name: "「恋愛ラボ」各務原市（夏原市のモデル）", lat: 35.40194117331336,  lng:136.84849843713414  ,category: "恋愛ラボ", prefecture: "岐阜県"},
+      { name: "「恋愛ラボ」岐阜市（岐穂市のモデル）", lat:35.42869681146929,  lng: 136.7602826688078 ,category: "恋愛ラボ", prefecture: "岐阜県"},
+      { name: "「恋愛ラボ」博物館明治村（旧制第八高等学校正門）", lat:35.34071730874344,  lng: 136.98872861201548 ,category: "恋愛ラボ", prefecture: "愛知県"},
+      { name: "「恋愛ラボ」未来会館", lat:35.44039728748634,   lng: 136.75956146599802 ,category: "恋愛ラボ", prefecture: "岐阜県"},
+      { name: "「聲の形」JR大垣駅", lat: 35.367280537052174,  lng:136.61780980342343,category: "聲の形", prefecture: "岐阜県"},
+      { name: "「聲の形」JR岐阜駅", lat:35.41038201341262,  lng: 136.75813892551264 ,category: "聲の形", prefecture: "岐阜県"},
+      { name: "「聲の形」青柳橋", lat: 35.4568462999014,   lng: 137.05253476784404 ,category: "聲の形", prefecture: "岐阜県"},
+      { name: "「聲の形」大垣公園", lat:35.36120007865756,  lng: 136.61489508808316 ,category: "聲の形", prefecture: "岐阜県"},
+      { name: "「聲の形」大垣市総合福祉会館", lat: 35.357606572170326,   lng: 136.61219555250048 ,category: "聲の形", prefecture: "岐阜県"},
+      { name: "「聲の形」四季の広場", lat:35.3575725723535,   lng:  136.61259786784078  ,category: "聲の形", prefecture: "岐阜県"},
+      { name: "「聲の形」新大橋", lat: 35.36381407050464,  lng: 136.61716279973254 ,category: "聲の形", prefecture: "岐阜県"},
+      { name: "「聲の形」美登鯉橋", lat:35.358002870968086,   lng:136.6118011678408 ,category: "聲の形", prefecture: "岐阜県"},
+      { name: "「聲の形」養老天命反転地", lat: 35.28211640298629,  lng:136.5503419966734  ,category: "聲の形", prefecture: "岐阜県"},
+      { name: "「さくら荘のペットな彼女」岐阜市河原町街並み", lat: 35.43684363205962,  lng: 136.77117261468058 ,category: "さくら荘のペットな彼女", prefecture: "岐阜県"},
+      { name: "「安達としまむら」岐阜第一高等学校", lat: 35.44346930449232,  lng:136.67483835250331  ,category: "安達としまむら", prefecture: "岐阜県"},
+      { name: "「安達としまむら」アスティ岐阜", lat: 35.40945163716762,   lng:136.7576786543476  ,category: "安達としまむら", prefecture: "岐阜県"},
+      { name: "「安達としまむら」JR大垣駅", lat: 35.367280537052174,  lng:136.61780980342343  ,category: "安達としまむら", prefecture: "岐阜県"}
+    ];
+
+    const map = L.map('map').setView([35.1709, 136.8815], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    let userMarker, routeLine;
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        userMarker = L.marker([lat, lng]).addTo(map).bindPopup("現在地").openPopup();
+        map.setView([lat, lng], 13);
+        updateDestinationList();
+      }, () => alert("位置情報を取得できませんでした"));
+    }
+
+    function calculateDistance(lat1, lng1, lat2, lng2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function updateDestinationList() {
+      if (!userMarker) return;
+
+      const category = document.getElementById("categoryFilter").value;
+      const prefecture = document.getElementById("prefectureFilter").value;
+      const lat = userMarker.getLatLng().lat;
+      const lng = userMarker.getLatLng().lng;
+      const distanceLimit = document.getElementById("distanceLimit").value;
+      const distanceFilter = distanceLimit === "limit" ? document.getElementById("distanceFilter").value : null;
+
+      const filtered = destinations
+        .map(dest => {
+          const dist = calculateDistance(lat, lng, dest.lat, dest.lng);
+          return { ...dest, distance: dist };
+        })
+        .filter(dest => {
+          const isWithinDistance = distanceLimit === "none" || (distanceLimit === "limit" && dest.distance <= distanceFilter);
+          return (
+            (!category || dest.category === category) &&
+            (!prefecture || dest.prefecture === prefecture) &&
+            isWithinDistance
+          );
+        })
+        .sort((a, b) => a.distance - b.distance);
+
+      const select = document.getElementById("destination");
+      select.innerHTML = '<option disabled selected>目的地を選択</option>';
+      filtered.forEach(dest => {
+        const opt = document.createElement("option");
+        opt.value = dest.name;
+        opt.textContent = `${dest.name}（${dest.distance.toFixed(2)} km）`;
+        select.appendChild(opt);
+      });
+    }
+
+    document.getElementById("categoryFilter").addEventListener("change", updateDestinationList);
+    document.getElementById("prefectureFilter").addEventListener("change", updateDestinationList);
+    document.getElementById("distanceLimit").addEventListener("change", function() {
+      // 「制限あり」を選んだ場合のみ距離入力を有効にする
+      const distanceFilter = document.getElementById("distanceFilter");
+      if (this.value === "limit") {
+        distanceFilter.disabled = false;
+      } else {
+        distanceFilter.disabled = true;
+      }
+      updateDestinationList();
+    });
+    document.getElementById("distanceFilter").addEventListener("input", updateDestinationList);
+
+    function getRoute() {
+      const selectedName = document.getElementById("destination").value;
+      if (!selectedName || !userMarker) {
+        alert("現在地と目的地を確認してください");
+        return;
+      }
+
+      const dest = destinations.find(d => d.name === selectedName);
+      const start = [userMarker.getLatLng().lng, userMarker.getLatLng().lat];
+      const end = [dest.lng, dest.lat];
+
+      fetch("https://api.openrouteservice.org/v2/directions/foot-walking/geojson", {
+        method: "POST",
+        headers: {
+          "Authorization": "5b3ce3597851110001cf62487338421d75c3437b97c6fe3ace881105",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ coordinates: [start, end] })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (routeLine) map.removeLayer(routeLine);
+        routeLine = L.geoJSON(data, { style: { color: 'blue', weight: 5 } }).addTo(map);
+        map.fitBounds(routeLine.getBounds());
+      });
+    }
+  </script>
+</body>
+</html>
